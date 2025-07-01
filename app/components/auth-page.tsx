@@ -118,6 +118,7 @@ export default function AuthPage({ onLogin, onBack }: AuthPageProps) {
             password: formData.password,
           }),
         })
+        console.log("ye hai data:", signInResponse)
 
         if (!signInResponse.ok) {
           if (signInResponse.status === 401 || signInResponse.status === 404) {
