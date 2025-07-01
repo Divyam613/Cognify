@@ -112,26 +112,26 @@ export default function Footer({ darkMode = false }: FooterProps) {
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-purple-400" />
                 <span className="text-gray-400">
-                  123 Innovation Drive
+                  419, radhyeshyam
                   <br />
-                  Tech Valley, CA 94025
+                  muradnagar
                   <br />
-                  United States
+                  U.P, India
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-purple-400" />
                 <a
-                  href="mailto:support@notesextractor.com"
+                  href="mailto:yashusharma613@gmail.com"
                   className="text-gray-400 hover:text-white transition-colors"
                 >
-                  support@notesextractor.com
+                  divyamsharma613@gmail.com
                 </a>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-purple-400" />
-                <a href="tel:+1-555-0123" className="text-gray-400 hover:text-white transition-colors">
-                  +1 (555) 012-3456
+                <a href="7055228913" className="text-gray-400 hover:text-white transition-colors">
+                  +91 7055228913
                 </a>
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function Footer({ darkMode = false }: FooterProps) {
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-gray-400 text-sm">© 2024 NotesExtractor. All rights reserved.</p>
+            <p className="text-gray-400 text-sm">© 2024 cognify. All rights reserved.</p>
             <div className="flex gap-6 text-sm">
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
                 Privacy

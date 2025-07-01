@@ -22,7 +22,7 @@ export default function NotesExtractor() {
     "home" | "auth" | "profile" | "about" | "how-it-works" | "support" | "adhd" | "my-extractions"
   >("home")
   const [user, setUser] = useState<any>(null)
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(true)
 
   useEffect(() => {
     // Check if user is logged in from localStorage
