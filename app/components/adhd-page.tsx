@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+require('dotenv').config();
 import { useState, useEffect } from "react"
 import {
   Upload,
@@ -26,6 +26,9 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import Header from "./header"
 import Footer from "./footer"
+import { Client, Storage, ID, Permission, Role } from 'appwrite';
+
+
 
 interface ADHDPageProps {
   user: any
@@ -68,6 +71,7 @@ export default function ADHDPage({
   const [chatInput, setChatInput] = useState("")
   const [isChatLoading, setIsChatLoading] = useState(false)
   const [fileType, setFileType] = useState<"image" | "pdf" | null>(null)
+  const [publicUrl, setpublicUrl] = useState("")
 
   useEffect(() => {
     // Check if there's a file from home page upload
@@ -131,34 +135,69 @@ export default function ADHDPage({
     }
   }
 
+
   const handleTextExtraction = async (file: File, selectedAccuracy: string = accuracy) => {
     if (!user) return
 
-    setIsProcessing(true)
+    setIsProcessing(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
 
     try {
+
       // Step 1: Upload file to get public URL (you'll need to implement this)
       const formData = new FormData()
       formData.append("file", file)
 
-      // TODO: Replace with your file upload endpoint to get public URL
-      const uploadResponse = await fetch("http://127.0.0.1:8000/api/upload-file/", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${user.accessToken}`,
-        },
-        body: formData,
-      })
+      const client = new Client()
+        .setEndpoint("https://fra.cloud.appwrite.io/v1") // Replace with your Appwrite endpoint
+        .setProject("685d78c7002e37b728f0") // Replace with your project ID
 
-      if (!uploadResponse.ok) {
-        throw new Error(`Upload failed: ${uploadResponse.status}`)
+      const storage = new Storage(client);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
+
+      try {
+        // Upload the file to a public bucket
+        const uploadedFile = await storage.createFile(
+          "685d7903000bc04300b5", // Replace with your bucket ID
+          ID.unique(),
+          file,
+          [
+            Permission.read(Role.any()) // Make the file publicly readable
+          ]
+        );
+
+        const public_url = `https://fra.cloud.appwrite.io/v1/storage/buckets/685d7903000bc04300b5/files/${uploadedFile.$id}/view?project=685d78c7002e37b728f0`;
+        setpublicUrl(public_url);
+
+        console.log("public_url", public_url);
+
+      } catch (error) {
+        console.error('Upload failed:', error);
+        throw error;
       }
 
-      const uploadData = await uploadResponse.json()
-      const publicUrl = uploadData.public_url || uploadData.url
+
+      // TODO: Replace with your file upload endpoint to get public URL
+      // const uploadResponse = await fetch("http://127.0.0.1:8000/api/upload-file/", {
+      //   method: "POST",
+      //   headers: {
+      //     Authorization: `Bearer ${user.accessToken}`,
+      //   },
+      //   body: formData,
+      // })
+
+      // if (!uploadResponse.ok) {
+      //   throw new Error(`Upload failed: ${uploadResponse.status}`)
+      // }
+
+      // const uploadData = await uploadResponse.json()
+      // const publicUrl = uploadData.public_url || uploadData.url
 
       // Step 2: Create user session with the new API
-      const sessionResponse = await fetch("http://127.0.0.1:8000/api/user-sessions/create/", {
+      console.log("token", user.accessToken)
+      const sessionResponse = await fetch("http://20.121.113.248:8000/api/user-sessions/create/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -171,26 +210,31 @@ export default function ADHDPage({
             text_highlight: "true",
           },
         }),
-      })
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      // console.log("sessionResponse", sessionResponse.json());
 
       if (!sessionResponse.ok) {
         throw new Error(`Session creation failed: ${sessionResponse.status}`)
       }
 
       const sessionData = await sessionResponse.json()
+      console.log("sessionData", sessionData)
 
       // Validate the response structure
-      if (!sessionData || typeof sessionData.extracted_text !== "string" || !Array.isArray(sessionData.keywords)) {
-        throw new Error("Invalid response format from server")
-      }
+      // if (!sessionData || typeof sessionData.extracted_text !== "string" || !Array.isArray(sessionData.keywords)) {
+      //   throw new Error("Invalid response format from server")
+      // }
 
       const result = {
         id: sessionData.id || sessionData.session_id || Date.now().toString(),
-        extractedText: sessionData.extracted_text,
-        keywords: sessionData.keywords,
-        chatHistory: sessionData.chat_history || [],
-        accuracy: selectedAccuracy,
-        publicUrl: publicUrl,
+        extractedText: sessionData.document_embeddings,
+        keywords: sessionData.session_keywords,
+        // chatHistory: sessionData.chat_history || [],
+        // accuracy: selectedAccuracy,
+        // publicUrl: publicUrl,
       }
 
       setExtractionResult(result)
@@ -214,118 +258,52 @@ export default function ADHDPage({
     setTimeout(() => {
       const sampleText =
         fileType === "pdf"
-          ? `PDF Document: Research Methods in Psychology
-
-Chapter 1: Introduction to Research Methods
-
-Research methods in psychology are systematic approaches used to collect, analyze, and interpret data about human behavior and mental processes. These methods ensure that psychological findings are reliable, valid, and can be replicated by other researchers.
-
-Key Research Methods:
-1. Experimental Research
-   - Controlled manipulation of variables
-   - Random assignment of participants
-   - Establishes cause-and-effect relationships
-
-2. Correlational Research
-   - Examines relationships between variables
-   - No manipulation of variables
-   - Cannot establish causation
-
-3. Observational Research
-   - Systematic observation of behavior
-   - Naturalistic or laboratory settings
-   - Minimal interference with natural behavior
-
-4. Survey Research
-   - Collection of data through questionnaires
-   - Large sample sizes possible
-   - Self-report limitations
-
-Important Considerations:
-- Ethical guidelines must be followed
-- Informed consent is required
-- Confidentiality must be maintained
-- Debriefing may be necessary
-
-Statistical Analysis:
-- Descriptive statistics summarize data
-- Inferential statistics test hypotheses
-- Effect size indicates practical significance
-- Confidence intervals provide precision estimates
-
-Conclusion:
-Understanding research methods is crucial for evaluating psychological claims and conducting meaningful research that advances our understanding of human behavior.`
-          : `Chapter 5: Photosynthesis
-
-Key Points:
-• Photosynthesis occurs in chloroplasts
-• Light-dependent reactions happen in thylakoids
-• Calvin cycle occurs in the stroma
-• Overall equation: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂
-
-Important Notes:
-- Chlorophyll absorbs red and blue light
-- Green light is reflected (why plants appear green)
-- Two main stages: light reactions and dark reactions
-- ATP and NADPH are produced in light reactions
-
-Remember: This process is essential for life on Earth as it produces oxygen and glucose!
-
-Additional Study Tips:
-1. Review the light and dark reactions separately
-2. Practice drawing the chloroplast structure
-3. Memorize the overall equation
-4. Understand the role of ATP and NADPH
-
-Questions to Consider:
-- What would happen if chlorophyll couldn't absorb light?
-- How does temperature affect photosynthesis rate?
-- Why is photosynthesis important for all life on Earth?`
+          ? extractionResult?.extractedText : extractionResult?.extractedText
 
       const sampleKeywords =
         fileType === "pdf"
           ? [
-              "Research Methods",
-              "Psychology",
-              "Experimental Research",
-              "Correlational Research",
-              "Observational Research",
-              "Survey Research",
-              "Variables",
-              "Random Assignment",
-              "Causation",
-              "Statistical Analysis",
-              "Ethical Guidelines",
-              "Informed Consent",
-              "Descriptive Statistics",
-              "Inferential Statistics",
-              "Effect Size",
-            ]
+            "Research Methods",
+            "Psychology",
+            "Experimental Research",
+            "Correlational Research",
+            "Observational Research",
+            "Survey Research",
+            "Variables",
+            "Random Assignment",
+            "Causation",
+            "Statistical Analysis",
+            "Ethical Guidelines",
+            "Informed Consent",
+            "Descriptive Statistics",
+            "Inferential Statistics",
+            "Effect Size",
+          ]
           : [
-              "Photosynthesis",
-              "Chloroplasts",
-              "Thylakoids",
-              "Calvin cycle",
-              "Chlorophyll",
-              "ATP",
-              "NADPH",
-              "Light reactions",
-              "Dark reactions",
-              "Glucose",
-              "Oxygen",
-              "Carbon dioxide",
-              "Water",
-              "Light energy",
-              "Stroma",
-            ]
+            "Photosynthesis",
+            "Chloroplasts",
+            "Thylakoids",
+            "Calvin cycle",
+            "Chlorophyll",
+            "ATP",
+            "NADPH",
+            "Light reactions",
+            "Dark reactions",
+            "Glucose",
+            "Oxygen",
+            "Carbon dioxide",
+            "Water",
+            "Light energy",
+            "Stroma",
+          ]
 
-      setExtractionResult({
-        id: "demo-" + Date.now(),
-        extractedText: sampleText,
-        keywords: sampleKeywords,
-        chatHistory: [],
-        accuracy: "medium",
-      })
+      // setExtractionResult({
+      //   // id: "demo-" + Date.now(),
+      //   extractedText: sampleText,
+      //   keywords: sampleKeywords,
+      //   chatHistory: [],
+      //   accuracy: "medium",
+      // })
 
       setIsProcessing(false)
     }, 2000)
@@ -704,15 +682,7 @@ Questions to Consider:
                       className={`min-h-[600px] p-4 border rounded-lg ${darkMode ? "bg-gray-700 border-gray-600" : "border-purple-200"}`}
                     >
                       <div className="flex flex-wrap gap-2">
-                        {extractionResult.keywords.map((keyword, index) => (
-                          <Badge
-                            key={index}
-                            variant="secondary"
-                            className="bg-purple-100 text-purple-700 hover:bg-purple-200 cursor-pointer text-sm py-1 px-3"
-                          >
-                            {keyword}
-                          </Badge>
-                        ))}
+                        {extractionResult.keywords}
                       </div>
                     </div>
                   )}
@@ -832,13 +802,12 @@ Questions to Consider:
                 {chatMessages.map((message, index) => (
                   <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                     <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
-                        message.role === "user"
-                          ? "bg-blue-600 text-white"
-                          : darkMode
-                            ? "bg-gray-700 text-gray-100"
-                            : "bg-gray-100 text-gray-900"
-                      }`}
+                      className={`max-w-[80%] p-3 rounded-lg ${message.role === "user"
+                        ? "bg-blue-600 text-white"
+                        : darkMode
+                          ? "bg-gray-700 text-gray-100"
+                          : "bg-gray-100 text-gray-900"
+                        }`}
                     >
                       {message.content}
                     </div>

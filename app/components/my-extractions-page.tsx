@@ -1,9 +1,19 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
-import { FileText, Trash2, Eye, MessageCircle, Send, Key, FileTextIcon, Calendar, Download, Copy } from "lucide-react"
+import { useEffect, useState } from "react"
+import {
+  FileText,
+  Trash2,
+  Eye,
+  MessageCircle,
+  Send,
+  Key,
+  FileTextIcon,
+  Calendar,
+  Download,
+  Copy,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -53,200 +63,48 @@ export default function MyExtractionsPage({
   const [chatInput, setChatInput] = useState("")
   const [isChatLoading, setIsChatLoading] = useState(false)
   const [currentAccuracy, setCurrentAccuracy] = useState<"low" | "medium" | "high">("medium")
+  const [extractions, setExtractions] = useState<Extraction[]>([])
 
-  const handleAccuracyChange = async (newAccuracy: "low" | "medium" | "high") => {
-    if (!selectedExtraction || !user) return
-
-    setCurrentAccuracy(newAccuracy)
-
-    try {
-      const response = await fetch("http://127.0.0.1:8000/api/user-sessions/create/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user.accessToken}`,
-        },
-        body: JSON.stringify({
-          pdf_public_url: selectedExtraction.publicUrl || selectedExtraction.image,
-          specifications: {
-            Accuracy: newAccuracy,
-            text_highlight: "true",
+  useEffect(() => {
+    const fetchExtractions = async () => {
+      console.log("Fetching extractions for user:", user.accessToken)
+      if (!user) return
+      try {
+        const response = await fetch("http://20.121.113.248:8000/api/user-sessions/", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.accessToken}`,
           },
-        }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setSelectedExtraction({
-          ...selectedExtraction,
-          extractedText: data.extracted_text,
-          keywords: data.keywords,
-          accuracy: newAccuracy,
         })
+        if (!response.ok) {
+          throw new Error(`Failed to fetch sessions: ${response.status}`)
+        }
+        const data = await response.json()
+        const transformed = data.map((item: any): Extraction => ({
+          id: `session-${item.id}`,
+          title: JSON.parse(item.session_name),
+          image: item.pdf_image_urls?.[0] || "/placeholder.svg?height=200&width=300",
+          extractedText: item.document_embeddings,
+          keywords: item.session_keywords?.split("  \n").map((kw: string) => kw.trim()).filter(Boolean) || [],
+          createdAt: item.last_activity,
+          chatHistory: [],
+        }))
+        setExtractions(transformed)
+      } catch (err) {
+        console.error("Failed to fetch extractions:", err)
       }
-    } catch (error) {
-      console.error("Error updating accuracy:", error)
     }
+    fetchExtractions()
+  }, [user])
+
+  const handleAccuracyChange = (newAccuracy: "low" | "medium" | "high") => {
+    if (!selectedExtraction) return
+    setCurrentAccuracy(newAccuracy)
+    setSelectedExtraction({ ...selectedExtraction, accuracy: newAccuracy })
   }
 
-  // Sample extractions data for demonstration
-  const sampleExtractions: Extraction[] = [
-    {
-      id: "sample-1",
-      title: "Biology Notes - Photosynthesis",
-      image: "/placeholder.svg?height=200&width=300",
-      extractedText: `Chapter 5: Photosynthesis
-
-Key Points:
-• Photosynthesis occurs in chloroplasts
-• Light-dependent reactions happen in thylakoids
-• Calvin cycle occurs in the stroma
-• Overall equation: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂
-
-Important Notes:
-- Chlorophyll absorbs red and blue light
-- Green light is reflected (why plants appear green)
-- Two main stages: light reactions and dark reactions
-- ATP and NADPH are produced in light reactions
-
-Remember: This process is essential for life on Earth as it produces oxygen and glucose!`,
-      keywords: [
-        "Photosynthesis",
-        "Chloroplasts",
-        "Thylakoids",
-        "Calvin cycle",
-        "Chlorophyll",
-        "ATP",
-        "NADPH",
-        "Light reactions",
-        "Dark reactions",
-        "Glucose",
-        "Oxygen",
-      ],
-      createdAt: "2024-12-20T10:30:00Z",
-      chatHistory: [
-        {
-          role: "user",
-          content: "Can you explain the Calvin cycle in simple terms?",
-        },
-        {
-          role: "assistant",
-          content:
-            "The Calvin cycle is the second stage of photosynthesis where plants use CO₂ from the air, along with ATP and NADPH from the light reactions, to make glucose (sugar). It happens in the stroma of chloroplasts and doesn't directly need light, which is why it's sometimes called the 'dark reaction'.",
-        },
-      ],
-    },
-    {
-      id: "sample-2",
-      title: "Math Notes - Quadratic Equations",
-      image: "/placeholder.svg?height=200&width=300",
-      extractedText: `Quadratic Equations - Chapter 8
-
-Standard Form: ax² + bx + c = 0 (where a ≠ 0)
-
-Solving Methods:
-1. Factoring
-   - Find two numbers that multiply to ac and add to b
-   - Factor and set each factor to zero
-
-2. Quadratic Formula
-   x = (-b ± √(b² - 4ac)) / 2a
-   
-3. Completing the Square
-   - Move constant to right side
-   - Add (b/2a)² to both sides
-   - Factor left side as perfect square
-
-Discriminant: b² - 4ac
-- If > 0: two real solutions
-- If = 0: one real solution
-- If < 0: no real solutions
-
-Practice Problems:
-x² - 5x + 6 = 0
-2x² + 7x - 4 = 0`,
-      keywords: [
-        "Quadratic Equations",
-        "Standard Form",
-        "Factoring",
-        "Quadratic Formula",
-        "Completing the Square",
-        "Discriminant",
-        "Real Solutions",
-        "Perfect Square",
-      ],
-      createdAt: "2024-12-19T14:15:00Z",
-      chatHistory: [],
-    },
-    {
-      id: "sample-3",
-      title: "History Notes - World War II",
-      image: "/placeholder.svg?height=200&width=300",
-      extractedText: `World War II (1939-1945)
-
-Key Events:
-• September 1, 1939 - Germany invades Poland
-• December 7, 1941 - Pearl Harbor attack
-• June 6, 1944 - D-Day invasion of Normandy
-• August 6 & 9, 1945 - Atomic bombs on Japan
-• September 2, 1945 - Japan surrenders
-
-Major Figures:
-- Adolf Hitler (Germany)
-- Winston Churchill (Britain)
-- Franklin D. Roosevelt (USA)
-- Joseph Stalin (Soviet Union)
-- Emperor Hirohito (Japan)
-
-Important Battles:
-1. Battle of Britain (1940)
-2. Battle of Stalingrad (1942-1943)
-3. Battle of Midway (1942)
-4. Battle of the Bulge (1944-1945)
-
-Consequences:
-- Establishment of United Nations
-- Beginning of Cold War
-- Decolonization movements
-- Nuclear age begins`,
-      keywords: [
-        "World War II",
-        "Pearl Harbor",
-        "D-Day",
-        "Adolf Hitler",
-        "Winston Churchill",
-        "Battle of Britain",
-        "Battle of Stalingrad",
-        "United Nations",
-        "Cold War",
-        "Nuclear age",
-      ],
-      createdAt: "2024-12-18T09:45:00Z",
-      chatHistory: [
-        {
-          role: "user",
-          content: "What was the significance of D-Day?",
-        },
-        {
-          role: "assistant",
-          content:
-            "D-Day (June 6, 1944) was the largest seaborne invasion in history and marked the beginning of the liberation of Western Europe from Nazi occupation. It opened a second front in Europe, forcing Germany to fight on multiple fronts and significantly contributing to the Allied victory.",
-        },
-        {
-          role: "user",
-          content: "How did it affect the war's outcome?",
-        },
-        {
-          role: "assistant",
-          content:
-            "D-Day was crucial because it divided German forces between the Eastern Front (fighting the Soviets) and the new Western Front. This stretched German resources thin and accelerated the collapse of Nazi Germany, shortening the war by an estimated 1-2 years.",
-        },
-      ],
-    },
-  ]
-
   const deleteExtraction = (id: string) => {
-    // For sample data, we'll just show an alert
     alert("This is a sample extraction. In the real app, this would delete the extraction from your account.")
   }
 
@@ -266,18 +124,15 @@ Consequences:
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!chatInput.trim() || !selectedExtraction) return
-
     const userMessage = { role: "user" as const, content: chatInput }
     const newMessages = [...chatMessages, userMessage]
     setChatMessages(newMessages)
     setChatInput("")
     setIsChatLoading(true)
-
-    // Simulate AI response for demo
     setTimeout(() => {
       const assistantMessage = {
         role: "assistant" as const,
-        content: `I understand you're asking about "${chatInput}". Based on your notes about ${selectedExtraction.title}, I can help explain the concepts. This is a demo response - in the real app, this would be powered by AI that analyzes your specific notes.`,
+        content: `I understand you're asking about "${chatInput}". This is a demo response based on your notes: ${selectedExtraction.title}.`,
       }
       const finalMessages = [...newMessages, assistantMessage]
       setChatMessages(finalMessages)
@@ -294,8 +149,7 @@ Consequences:
 
   const downloadText = () => {
     if (!selectedExtraction) return
-    const textToDownload =
-      activeView === "text" ? selectedExtraction.extractedText : selectedExtraction.keywords.join("\n")
+    const textToDownload = activeView === "text" ? selectedExtraction.extractedText : selectedExtraction.keywords.join("\n")
     const blob = new Blob([textToDownload], { type: "text/plain" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -534,13 +388,12 @@ Consequences:
                             className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                           >
                             <div
-                              className={`max-w-[85%] p-2 rounded-lg text-sm ${
-                                message.role === "user"
-                                  ? "bg-blue-600 text-white"
-                                  : darkMode
-                                    ? "bg-gray-700 text-gray-100"
-                                    : "bg-gray-100 text-gray-900"
-                              }`}
+                              className={`max-w-[85%] p-2 rounded-lg text-sm ${message.role === "user"
+                                ? "bg-blue-600 text-white"
+                                : darkMode
+                                  ? "bg-gray-700 text-gray-100"
+                                  : "bg-gray-100 text-gray-900"
+                                }`}
                             >
                               {message.content}
                             </div>
@@ -632,7 +485,7 @@ Consequences:
 
           {/* Sample Extractions Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slide-up">
-            {sampleExtractions.map((extraction, index) => (
+            {extractions.map((extraction, index) => (
               <Card
                 key={extraction.id}
                 className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border-0 ${darkMode ? "bg-gray-800/70" : "bg-white/70"} backdrop-blur-sm`}
